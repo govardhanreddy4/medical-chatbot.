@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Medical Assistant</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --chat-bg: #f9f9f9;
+            --user-bubble: #007BFF;
+            --bot-bubble: #e0e0e0;
+            --user-text: #ffffff;
+            --bot-text: #000000;
+            --input-bg: #ffffff;
+            --border-color: #ccc;
+            --accent-green: #28a745;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --text-color: #ffffff;
+            --chat-bg: #1E1E1E;
+            --user-bubble: #007BFF;
+            --bot-bubble: #333333;
+            --user-text: #ffffff;
+            --bot-text: #ffffff;
+            --input-bg: #1A1A1A;
+            --border-color: #444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* HEADER */
+        .header {
+            padding: 1rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+            background-color: var(--bg-color);
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 0.5rem;
+        }
+
+        .warning {
+            font-size: 0.8rem;
+            color: #ff4c4c;
+            font-weight: bold;
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-color);
+            transition: transform 0.2s;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+        }
+
+        /* QUICK SUGGESTIONS */
+        .suggestions {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.8rem 1rem;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+        }
+
+        /* Hide scrollbar for suggestions */
+        .suggestions::-webkit-scrollbar {
+            display: none;
+        }
+
+        .suggestions {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .suggestion-btn {
+            background-color: transparent;
+            border: 1px solid var(--user-bubble);
+            color: var(--user-bubble);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .suggestion-btn:hover {
+            background-color: var(--user-bubble);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        /* CHAT AREA */
+        .chat-container {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            background-color: var(--chat-bg);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 0.8rem 1rem;
+            border-radius: 18px;
+            animation: fadeIn 0.3s ease-out;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            line-height: 1.4;
+        }
+
+        .user-message {
+            align-self: flex-end;
+            background-color: var(--user-bubble);
+            color: var(--user-text);
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot-message {
+            align-self: flex-start;
+            background-color: var(--bot-bubble);
+            color: var(--bot-text);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-image {
+            max-width: 100%;
+            border-radius: 12px;
+            margin-bottom: 0.5rem;
+            max-height: 250px;
+            object-fit: cover;
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* TYPING INDICATOR */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 0.5rem 0.2rem;
+            align-items: center;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--bot-text);
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+            }
+
+            30% {
+                transform: translateY(-4px);
+            }
+        }
+
+        /* INPUT SECTION */
+        .input-section {
+            padding: 1rem;
+            border-top: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .image-preview-container {
+            display: none;
+            position: relative;
+            width: max-content;
+            animation: fadeIn 0.3s;
+        }
+
+        .image-preview {
+            max-width: 100px;
+            max-height: 100px;
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+            object-fit: cover;
+            display: block;
+        }
+
+        .remove-img-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ff4c4c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+        }
+
+        .remove-img-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--user-bubble);
+            transition: transform 0.2s, background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+        }
+
+        .icon-btn:hover {
+            background-color: rgba(0, 123, 255, 0.1);
+            transform: scale(1.1);
+        }
+
+        .mic-btn {
+            color: var(--text-color);
+        }
+
+        .mic-btn:hover {
+            background-color: var(--border-color);
+        }
+
+        .text-input {
+            flex: 1;
+            padding: 0.8rem 1rem;
+            border-radius: 24px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            outline: none;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .text-input:focus {
+            border-color: var(--user-bubble);
+        }
+
+        .send-btn {
+            background-color: var(--user-bubble);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            background-color: #0056b3;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.2rem;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>AI Medical Assistant</h1>
+        <p>Ask about symptoms, health tips, and basic diagnosis</p>
+        <div class="warning">This AI does not replace professional medical advice.</div>
+        <button class="theme-toggle" id="themeBtn" aria-label="Toggle Theme">🌙</button>
+    </div>
+
+    <div class="suggestions">
+        <button class="suggestion-btn">Fever</button>
+        <button class="suggestion-btn">Headache</button>
+        <button class="suggestion-btn">Cold</button>
+        <button class="suggestion-btn">Check symptoms</button>
+    </div>
+
+    <div class="chat-container" id="chatbox">
+        <!-- Messages will appear here -->
+    </div>
+
+    <div class="input-section">
+        <div class="image-preview-container" id="imagePreviewContainer">
+            <img src="" alt="Preview" class="image-preview" id="imagePreviewImg">
+            <button class="remove-img-btn" id="removeImgBtn">❌</button>
+        </div>
+
+        <div class="input-row">
+            <input type="file" id="fileInput" accept="image/png, image/jpeg, image/jpg" style="display: none;">
+            <button class="icon-btn" id="uploadBtn" title="Upload Image">📷</button>
+
+            <input type="text" class="text-input" id="userInput" placeholder="Describe your symptoms..."
+                autocomplete="off">
+
+            <button class="icon-btn mic-btn" id="micBtn" title="Voice Input (UI Only)">🎤</button>
+            <button class="send-btn" id="sendBtn" title="Send Message">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const themeBtn = document.getElementById('themeBtn');
+        const rootHtml = document.documentElement;
+        const chatbox = document.getElementById('chatbox');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreviewImg = document.getElementById('imagePreviewImg');
+        const removeImgBtn = document.getElementById('removeImgBtn');
+        const suggestionBtns = document.querySelectorAll('.suggestion-btn');
+
+        let currentImageObjURL = null;
+        let isWaitingForResponse = false;
+
+        // 1. Theme Toggling
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                rootHtml.setAttribute('data-theme', 'dark');
+                themeBtn.textContent = '☀️';
+            } else {
+                rootHtml.setAttribute('data-theme', 'light');
+                themeBtn.textContent = '🌙';
+            }
+        }
+
+        themeBtn.addEventListener('click', () => {
+            const currentTheme = rootHtml.getAttribute('data-theme');
+            if (currentTheme === 'dark') {
+                rootHtml.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+                themeBtn.textContent = '🌙';
+            } else {
+                rootHtml.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                themeBtn.textContent = '☀️';
+            }
+        });
+
+        // 2. Chat Functionality
+        function appendMessage(text, sender, imageUrl = null) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message');
+            msgDiv.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
+
+            if (imageUrl) {
+                const imgObj = document.createElement('img');
+                imgObj.src = imageUrl;
+                imgObj.classList.add('chat-image');
+                msgDiv.appendChild(imgObj);
+            }
+
+            if (text) {
+                const textNode = document.createElement('div');
+                textNode.textContent = text;
+                msgDiv.appendChild(textNode);
+            }
+
+            chatbox.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.classList.add('message', 'bot-message');
+            typingDiv.id = 'typingIndicator';
+
+            typingDiv.innerHTML = `
+                <div class="typing-indicator">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+            `;
+            chatbox.appendChild(typingDiv);
+            scrollToBottom();
+        }
+
+        function removeTypingIndicator() {
+            const typingDiv = document.getElementById('typingIndicator');
+            if (typingDiv) {
+                typingDiv.remove();
+            }
+        }
+
+        async function fetchBotResponse(userText, imageFile) {
+            isWaitingForResponse = true;
+            showTypingIndicator();
+
+            try {
+                const formData = new FormData();
+                // Ensure query is never empty as backend requires query: str = Form(...)
+                formData.append("query", userText || "Analyze this image");
+
+                if (imageFile) {
+                    formData.append("image", imageFile);
+                }
+
+                const response = await fetch('http://127.0.0.1:8000/upload_and_query', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                removeTypingIndicator();
+
+                const responseText = await response.text();
+                let result;
+
+                try {
+                    result = JSON.parse(responseText);
+                } catch (e) {
+                    if (response.status === 404 || response.status === 405) {
+                        throw new Error("Server endpoint not found. Please ensure you are running the app via 'python app.py' and not a VSCode Live Server plugin.");
+                    }
+                    throw new Error(`Server returned invalid response (Status ${response.status}): ${responseText || "Empty Response"}`);
+                }
+
+                if (!response.ok) {
+                    throw new Error(result.detail || "An error occurred while processing your request.");
+                }
+
+                let botReply = "No response received.";
+
+                if (result.output) {
+                    botReply = result.output;
+                } else if (result.error) {
+                    botReply = "Error: " + result.error;
+                }
+
+                appendMessage(botReply, 'bot');
+            } catch (error) {
+                removeTypingIndicator();
+                console.error("Error:", error);
+                appendMessage("Sorry, I encountered an error connecting to the server: " + error.message, 'bot');
+            } finally {
+                isWaitingForResponse = false;
+            }
+        }
+
+        function handleSend() {
+            if (isWaitingForResponse) return;
+
+            const text = userInput.value.trim();
+            const imageFile = fileInput.files[0];
+            const hasImage = !!imageFile;
+
+            if (!text && !hasImage) return;
+
+            // Append user message with text and image
+            appendMessage(text, 'user', currentImageObjURL);
+
+            // Clear input
+            userInput.value = '';
+
+            // Generate bot response
+            fetchBotResponse(text, imageFile);
+
+            // Clear image state after sending
+            clearImagePreview();
+        }
+
+        // 3. Image Upload Handling
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                currentImageObjURL = URL.createObjectURL(file);
+                imagePreviewImg.src = currentImageObjURL;
+                imagePreviewContainer.style.display = 'block';
+            }
+        });
+
+        removeImgBtn.addEventListener('click', clearImagePreview);
+
+        function clearImagePreview() {
+            currentImageObjURL = null;
+            imagePreviewImg.src = '';
+            fileInput.value = '';
+            imagePreviewContainer.style.display = 'none';
+        }
+
+        // 4. Input Events
+        sendBtn.addEventListener('click', handleSend);
+
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleSend();
+            }
+        });
+
+        suggestionBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                userInput.value = btn.textContent;
+                userInput.focus();
+            });
+        });
+
+        // 5. Initializations
+        initTheme();
+
+        // Initial bot greeting
+        setTimeout(() => {
+            appendMessage("Hello! I’m your AI medical assistant. How can I help you today?", 'bot');
+        }, 500);
+
+    </script>
+</body>
+
+</html>
