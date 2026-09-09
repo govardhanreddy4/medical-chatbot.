@@ -1,6 +1,6 @@
 # AI Medical Assistant Chatbot
 
-This project is a web-based AI medical assistant that uses Groq's Llama 4 Scout model to analyze medical images and provide preliminary health information.
+This project is a web-based AI medical assistant that uses Groq's `qwen/qwen3.6-27b` model to analyze medical images and provide preliminary health information.
 
 ## Features
 
@@ -59,5 +59,5 @@ web_ai_medical_chatbot/
 
 - **Backend**: FastAPI
 - **Frontend**: HTML, CSS, Vanilla JavaScript
-- **AI Model**: Groq Llama 4 Scout (via API)
+- **AI Model**: Groq qwen/qwen3.6-27b (via API)
 - **Environment Management**: python-dotenv

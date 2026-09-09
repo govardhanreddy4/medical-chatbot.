@@ -6,6 +6,7 @@ import base64
 import requests
 import io
 from PIL import Image
+import re
 from dotenv import load_dotenv
 import os
 import logging
@@ -52,38 +53,37 @@ async def upload_and_query(query: str = Form(...), image: Optional[UploadFile] =
     try:
         messages_content = []
         
-        medical_prompt = f"""
-                        You are a helpful and careful medical assistant AI.
+        medical_prompt = f"""You are a careful medical assistant AI.
 
-                        Analyze the given image (if provided) and user query carefully.
+Analyze the user's question and image if provided.
 
-                        User Query:
-                        {query}
+Give a SHORT, clear, and practical response. Output ONLY the final medical answer.
 
-                        Provide a concise, structured response in the format below (limit to 4–6 lines total):
+Do NOT include any reasoning, thinking process, self-review, internal analysis, or introductory phrases like "Here's a thinking process", "I will analyze...", "Let's check...", or discussion of instructions.
 
-                        1. Possible Condition:
-                        - Briefly mention likely causes (use "may be" or "could be")
+Use this exact response structure:
 
-                        2. Explanation:
-                        - Short and simple reason
+1. Possible Condition:
+- Mention only 1–3 likely possibilities using cautious words such as "may" or "could".
 
-                        3. Management:
-                        - 1–2 practical steps
+2. Explanation:
+- Explain the main reason in 2–3 simple sentences.
 
-                        4. Diet:
-                        - Key foods to eat/avoid (1 line)
+3. What to Do:
+- Give 3–5 practical steps.
 
-                        5. Precautions:
-                        - 1 important tip
+4. When to See a Doctor:
+- Mention important warning signs briefly.
 
-                        6. Doctor Visit:
-                        - When to seek help (1 line)
+Rules:
+- Keep the entire response under 200–250 words.
+- Do not repeat the user's question.
+- Do not give a final diagnosis.
+- Do not provide unnecessary medical details.
+- Use simple, easy-to-understand language.
 
-                        Rules:
-                        - No final diagnosis
-                        - Keep response short, clear, and practical
-                        """
+User Query:
+{query}"""
         messages_content.append({"type": "text", "text": medical_prompt})
 
         if image and image.filename:
@@ -117,10 +117,12 @@ async def upload_and_query(query: str = Form(...), image: Optional[UploadFile] =
         response = requests.post(
             GROQ_API_URL,
             json={
-                "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+                "model": "qwen/qwen3.6-27b",
                 "messages": messages,
-                "max_tokens": 500,
-                "temperature": 0.6
+                "max_tokens": 600,
+                "temperature": 0.3,
+                "reasoning_effort": "none",
+                "reasoning_format": "hidden"
             },
             headers={
                 "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -140,6 +142,13 @@ async def upload_and_query(query: str = Form(...), image: Optional[UploadFile] =
 
         try:
             answer = result["choices"][0]["message"]["content"]
+            if answer:
+                # Clean up any leftover thinking process or preamble if present
+                if "</think>" in answer:
+                    answer = answer.split("</think>")[-1].strip()
+                elif "<think>" in answer:
+                    answer = re.sub(r'^\s*<think>', '', answer, flags=re.IGNORECASE).strip()
+                answer = re.sub(r"^(Here's a thinking process:?|Thinking process:?|Draft:?|I will analyze.*?|Let's check.*?)\s*", "", answer, flags=re.IGNORECASE | re.DOTALL).strip()
         except (KeyError, IndexError, TypeError):
             logger.error(f"Unexpected response format: {result}")
             raise HTTPException(status_code=500, detail="Unexpected API response format")
@@ -151,7 +160,7 @@ async def upload_and_query(query: str = Form(...), image: Optional[UploadFile] =
             status_code=200,
             content={
                 "output": answer,
-                "model": "meta-llama/llama-4-scout-17b-16e-instruct"
+                "model": "qwen/qwen3.6-27b"
             }
         )
 
@@ -164,4 +173,4 @@ async def upload_and_query(query: str = Form(...), image: Optional[UploadFile] =
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
